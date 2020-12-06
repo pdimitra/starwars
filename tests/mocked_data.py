@@ -1,0 +1,31 @@
+people_mock_optimal = [{'name': 'Luke Skywalker', 'species': [], 'height': '172', 'appearances': 4},
+                       {'name': 'C-3PO', 'species': ['http://swapi.dev/api/species/2/'],
+                        'height': '167', 'appearances': 6},
+                       {'name': 'R2-D2', 'species': ['http://swapi.dev/api/species/2/'],
+                        'height': '96', 'appearances': 6},
+                       {'name': 'Darth Vader', 'species': [], 'height': '202', 'appearances': 4},
+                       {'name': 'Leia Organa', 'species': [], 'height': '150', 'appearances': 4},
+                       {'name': 'Yoda', 'species': ['http://swapi.dev/api/species/6/'],
+                        'height': '66', 'appearances': 5},
+                       {'name': 'Palpatine', 'species': [], 'height': '170', 'appearances': 5},
+                       {'name': 'Ki-Adi-Mundi', 'species': ['http://swapi.dev/api/species/20/'],
+                        'height': '198', 'appearances': 3},
+                       {'name': 'Chewbacca', 'species': ['http://swapi.dev/api/species/3/'],
+                        'height': '228', 'appearances': 4},
+                       {'name': 'Obi-Wan Kenobi', 'species': [], 'height': '182', 'appearances': 6}]
+
+
+
+people_mock_optimal_after_species = [{'name': 'Luke Skywalker', 'species': '', 'height': '172', 'appearances': 4},
+                       {'name': 'C-3PO', 'species': 'Droid', 'height': '167', 'appearances': 6},
+                       {'name': 'R2-D2', 'species': 'Droid', 'height': '96', 'appearances': 6},
+                       {'name': 'Darth Vader', 'species': '', 'height': '202', 'appearances': 4},
+                       {'name': 'Leia Organa', 'species': '', 'height': '150', 'appearances': 4},
+                       {'name': 'Yoda', 'species': "Yoda's species", 'height': '66',
+                        'appearances': 5},
+                       {'name': 'Palpatine', 'species': '', 'height': '170', 'appearances': 5},
+                       {'name': 'Ki-Adi-Mundi', 'species': 'Cerean', 'height': '198',
+                        'appearances': 3},
+                       {'name': 'Chewbacca', 'species': 'Wookie', 'height': '228',
+                        'appearances': 4},
+                       {'name': 'Obi-Wan Kenobi', 'species': '', 'height': '182', 'appearances': 6}]
