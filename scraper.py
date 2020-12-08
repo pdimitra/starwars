@@ -1,115 +1,177 @@
-import csv
+"""
+Title     : StarWarsScraper
+Author    : Dimitra Paraskevopoulou
+Created   : 06 December 2020
+"""
+
+import logging
+from typing import Tuple
+import settings
+
 import requests
 
 
-# TODO add try/catch, types, comments , pylint etc, logs
-# MAke 10 a parameter or constant?/ tests
+class StarWarsScraper:
+    """
+    This class holds all the required methods for retrieving and parsing data from the starwars API
+    and methods for implementing the exercise relevant steps
+    """
 
-# try/ catch
-def get_species(uri):
-    r = requests.get(uri)
-    r = r.json()
-    return r["name"]
+    def __init__(self, results_to_output: int = 0) -> None:
+        self.__results_to_output = results_to_output if results_to_output != 0 else \
+            settings.TOP_HEIGHT_NUMBER
+        self.people_uri = f"{settings.STARWARS_API_URI}/people/"
 
+    @staticmethod
+    def __get_api_data(uri: str) -> dict:
+        """
+        Method to fetch the data from the starwars api
+        :param uri: string uri from which to fetch the data
+        :return: json api response parsed in a python dict
+        """
+        try:
+            r = requests.get(uri)
+            r.raise_for_status()
+            r = r.json()
+            return r
+        except Exception as e:
+            logging.error(
+                f"[{type(e).__name__}] exception occurred with arguments: {e.args!r}.")
+            raise e
 
-def get_people_optimal(uri='https://swapi.dev/api/people/', results=[], appears=[]):
-    r = requests.get(uri)
-    r = r.json()
-    for people in r["results"]:
-        if len(appears) == 10:
-            min_appearances = min(appears)
-            if len(people["films"]) < min_appearances:
-                continue
-            elif len(people["films"]) == min_appearances:
-                min_appearances_index = appears.index(min_appearances)
-                if int(results[min_appearances_index]["height"]) >= int(people["height"]):
-                    continue
-                else:
-                    appears[min_appearances_index] = len(people["films"])
-                    results[min_appearances_index] = {"name": people["name"],
-                                                      "species": people["species"],
-                                                      "height": people["height"],
-                                                      "appearances": len(people["films"])}
-                    continue
-            else:
-                min_appearances_index = appears.index(min_appearances)
-                appears[min_appearances_index] = len(people["films"])
-                results[min_appearances_index] = {"name": people["name"],
-                                                  "species": people["species"],
-                                                  "height": people["height"],
-                                                  "appearances": len(people["films"])}
-                continue
+    def get_people(self, uri: str, characters: list = [],
+                   top_appearances: list = []) -> Tuple[list, list]:
+        """
+        Method to fetch all people (characters) from the https://swapi.dev/api/people/
+        This is a recursive method since the data includes pagination, while there is a next
+        page, the method is getting called again until all results are fetched
+        :param uri: string uri from which to fetch the data
+        :param characters: the list where the dictionaries with the fetched data are accumulated
+         (max size 10 dictionaries in the specific implementation)
+        :param top_appearances: a list of size 10, which holds the number of appearances in films
+        of each character in the characters list. This list is used for implementing an algorithm
+        for a more optimal and performant solution, than having to sort a big list of dictionaries
+        of potential unknown size (in the specific api it would have been a list with 82
+        dictionaries)
+        :return: 2 lists, the characters and the top_appearances
+        """
 
-        results.append({"name": people["name"], "species": people["species"],
-                        "height": people["height"], "appearances": len(people["films"])})
-        appears.append(len(people["films"]))
+        try:
+            api_response = self.__get_api_data(uri=uri)
 
-    while r["next"] is not None:
-        results, appears = get_people_optimal(uri=r["next"], results=results, appears=appears)
-        return results, appears
+            characters, top_appearances = self.__parse_people(api_response, characters,
+                                                              top_appearances)
 
-    return results, appears
+            while api_response["next"] is not None:
+                characters, top_appearances = self.get_people(uri=api_response["next"],
+                                                              characters=characters,
+                                                              top_appearances=top_appearances)
+                return characters, top_appearances
 
+            return characters, top_appearances
+        except Exception as e:
+            logging.error(
+                f"[{type(e).__name__}] exception occurred with arguments: {e.args!r}.")
+            raise e
 
-# people = get_people()
+    def __parse_people(self, api_response: dict, characters: list, top_appearances: list) -> Tuple[
+        list, list]:
+        """
+        This method implements an algorithm for making sure the output will consist of only the 10
+        characters with the most appearances in films. In addition when 2 characters with the same
+        number of appearances are competing of which will be in the list, I decided to use the
+        'height' as a decision factor and to insert the one with the highest height. The indexes of
+        both characters and top_appearances lists are in sync, so that they addressing mapped
+        entries in both. The reason I decided to implement such an algorithm is for memory
+        optimization (no reason to store 82 dicts in a list) and for making the sorting on a small
+        list on the next steps much more efficient.
+        The algorithm works as follows:
+        1. In the first iteration that both characters and top_appearances are empty, they are
+            getting filled with the first 10 results return from the first page of results
+        2. In the next iterations both characters and top_appearances are always having 10 elements
+            As we want only the characters with most appearances in our list, I am checking if the
+            number of the films the current character has played is greater than the minimum
+            number in the list top_appearances.
+            If the number is smaller, the current character is skipped from further processing
+            if the number of films is equal to the minimum, then the height of the corresponding
+            character is compared with the height of the current character
+                if the height of the current character is higher, then the current character
+                replaces the one with the equal number or appearances in both lists
+                if the height of the current character is less or equal then the current character
+                is skipped from further processing
+            if the number of films is greater, he current character
+                replaces the one with the minimum number or appearances in both lists
+        :param api_response: dictionary response of the starwars /people/ endpoint
+        :param characters: the list where the dictionaries with the fetched data are accumulated
+         (max size 10 dictionaries in the specific implementation)
+        :param top_appearances: a list of size 10, which holds the number of appearances in films
+        of each character in the characters list. This list is used for implementing an algorithm
+        for a more optimal and performant solution, than having to sort a big list of dictionaries
+        of potential unknown size (in the specific api it would have been a list with 82
+        dictionaries)
+        :return: 2 lists, the characters and the top_appearances
+        """
+        try:
+            for people in api_response["results"]:
 
-# people, appears = get_people_optimal()
+                num_of_films = len(people["films"])
+                if len(top_appearances) == self.__results_to_output:
 
+                    min_appearances = min(top_appearances)
 
-people_mock_optimal = [{'name': 'Luke Skywalker', 'species': [], 'height': '172', 'appearances': 4},
-                       {'name': 'C-3PO', 'species': ['http://swapi.dev/api/species/2/'],
-                        'height': '167', 'appearances': 6},
-                       {'name': 'R2-D2', 'species': ['http://swapi.dev/api/species/2/'],
-                        'height': '96', 'appearances': 6},
-                       {'name': 'Darth Vader', 'species': [], 'height': '202', 'appearances': 4},
-                       {'name': 'Leia Organa', 'species': [], 'height': '150', 'appearances': 4},
-                       {'name': 'Yoda', 'species': ['http://swapi.dev/api/species/6/'],
-                        'height': '66', 'appearances': 5},
-                       {'name': 'Palpatine', 'species': [], 'height': '170', 'appearances': 5},
-                       {'name': 'Ki-Adi-Mundi', 'species': ['http://swapi.dev/api/species/20/'],
-                        'height': '198', 'appearances': 3},
-                       {'name': 'Chewbacca', 'species': ['http://swapi.dev/api/species/3/'],
-                        'height': '228', 'appearances': 4},
-                       {'name': 'Obi-Wan Kenobi', 'species': [], 'height': '182', 'appearances': 6}]
+                    if num_of_films < min_appearances:
+                        continue
+                    elif num_of_films == min_appearances:
+                        min_appearances_index = top_appearances.index(min_appearances)
+                        if int(characters[min_appearances_index]["height"]) >= int(
+                                people["height"]):
+                            continue
+                        else:
+                            top_appearances[min_appearances_index] = num_of_films
+                            characters[min_appearances_index] = {"name": people["name"],
+                                                                 "species": people["species"],
+                                                                 "height": people["height"],
+                                                                 "appearances": num_of_films}
+                            continue
+                    else:
+                        min_appearances_index = top_appearances.index(min_appearances)
+                        top_appearances[min_appearances_index] = num_of_films
+                        characters[min_appearances_index] = {"name": people["name"],
+                                                             "species": people["species"],
+                                                             "height": people["height"],
+                                                             "appearances": num_of_films}
+                        continue
 
-print(people_mock_optimal)
+                characters.append({"name": people["name"], "species": people["species"],
+                                   "height": people["height"], "appearances": num_of_films})
+                top_appearances.append(num_of_films)
+            return characters, top_appearances
+        except Exception as e:
+            logging.error(
+                f"[{type(e).__name__}] exception occurred with arguments: {e.args!r}.")
+            raise e
 
-# for people in people_mock_optimal:
-#     name = ""
-#     if people["species"]:
-#         for species_uri in people["species"]:
-#             name = " ".join([get_species(species_uri), name])
-#         name = name.strip()
-#     people["species"] = name
-
-print(people_mock_optimal)
-people_mock_optimal = [{'name': 'Luke Skywalker', 'species': '', 'height': '172', 'appearances': 4},
-                       {'name': 'C-3PO', 'species': 'Droid', 'height': '167', 'appearances': 6},
-                       {'name': 'R2-D2', 'species': 'Droid', 'height': '96', 'appearances': 6},
-                       {'name': 'Darth Vader', 'species': '', 'height': '202', 'appearances': 4},
-                       {'name': 'Leia Organa', 'species': '', 'height': '150', 'appearances': 4},
-                       {'name': 'Yoda', 'species': "Yoda's species", 'height': '66',
-                        'appearances': 5},
-                       {'name': 'Palpatine', 'species': '', 'height': '170', 'appearances': 5},
-                       {'name': 'Ki-Adi-Mundi', 'species': 'Cerean', 'height': '198',
-                        'appearances': 3},
-                       {'name': 'Chewbacca', 'species': 'Wookie', 'height': '228',
-                        'appearances': 4},
-                       {'name': 'Obi-Wan Kenobi', 'species': '', 'height': '182', 'appearances': 6}]
-
-newlist = sorted(people_mock_optimal, key=lambda k: int(k['height']), reverse=True)
-
-import pprint
-
-pp = pprint.PrettyPrinter(indent=4)
-pp.pprint(newlist)
-
-import csv
-
-with open('names.csv', 'w', newline='') as csvfile:
-    fieldnames = ['name', 'species', 'height', 'appearances']
-    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-
-    writer.writeheader()
-    for row in newlist:
-        writer.writerow(row)
+    def get_species(self, characters: list) -> list:
+        """
+        Method to fetch the species name for each character
+        By analyzing the data from the API the species value is always of list type. Even though
+        I didn't find any occurrence of more than one value in the list, I decided to implement
+        a for loop just for being sure that also a case of multiple values would be covered.
+        In case of multiple values I decided to concatenate the names of species returned with a
+        space in between for making it possible to be on the same column of the scv file.
+        :param characters: list of 10 dicts with the 10 characters appear in the most films
+        :return: the characters list
+        """
+        try:
+            for people in characters:
+                name = ""
+                if people["species"]:
+                    for species_uri in people["species"]:
+                        name = " ".join([self.__get_api_data(species_uri)["name"], name])
+                    name = name.strip()
+                people["species"] = name
+            return characters
+        except Exception as e:
+            logging.error(
+                f"[{type(e).__name__}] exception occurred with arguments: {e.args!r}.")
+            raise e

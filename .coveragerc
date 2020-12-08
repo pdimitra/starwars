@@ -1,0 +1,18 @@
+[run]
+
+omit =
+
+    */__init__.py
+    tests/*
+    main.py
+
+[report]
+show_missing=True
+exclude_lines =
+    # Have to re-enable the standard pragma
+    pragma: no cover
+
+    # Don't complain if tests don't hit defensive assertion code:
+    raise NotImplementedError
+
+    __connect
