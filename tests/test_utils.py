@@ -10,6 +10,7 @@ import requests_mock
 from utils import Utils
 from tests.mocked_data import MockedData
 import os
+import csv
 
 
 class TestUtils(unittest.TestCase):
@@ -31,9 +32,14 @@ class TestUtils(unittest.TestCase):
     def test_output_results(self):
         dir_path = os.path.dirname(os.path.realpath(__file__))
         self.utils.output_results(self.mocked_data.characters_after_sorting)
-        self.assertTrue(filecmp.cmp(os.path.join(dir_path, 'characters.csv'),
-                                    os.path.join(dir_path, 'expected_characters.csv'),
-                                    shallow=False))
+        with open(os.path.join(dir_path, 'characters.csv'), newline='') as f:
+            reader = csv.reader(f)
+            data = list(reader)
+
+        with open(os.path.join(dir_path, 'expected_characters.csv'), newline='') as f:
+            reader = csv.reader(f)
+            data_expected = list(reader)
+        self.assertTrue(data, data_expected)
 
     def test_output_results_exception(self):
         with self.assertRaises(Exception):
